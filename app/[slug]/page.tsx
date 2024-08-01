@@ -15,6 +15,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: `falecci.dev | ${post.metadata.title}`,
     description: post.metadata.description,
+    twitter: {
+      card: "summary_large_image",
+      images: [post.metadata.thumbnail],
+      title: post.metadata.title,
+      description: post.metadata.description,
+    },
   };
 }
 
