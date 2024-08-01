@@ -1,21 +1,19 @@
 import fs from "node:fs";
 import path from "node:path";
 import React from "react";
+import Image from "next/image";
 import dynamic from "next/dynamic";
-import type { Metadata, ResolvingMetadata } from "next";
+import type { Metadata } from "next";
 import { format } from "date-fns";
 
 type Props = {
   params: { slug: string };
 };
 
-export async function generateMetadata(
-  { params }: Props,
-  parent: ResolvingMetadata
-): Promise<Metadata> {
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const post = await getPost(params);
   return {
-    title: post.metadata.title,
+    title: `falecci.dev | ${post.metadata.title}`,
     description: post.metadata.description,
   };
 }
@@ -61,25 +59,34 @@ export default async function Page({ params }: { params: { slug: string } }) {
   );
 
   return (
-    <div className="max-w-3xl z-10 w-full items-center justify-between">
-      <div className="w-full flex justify-center items-center flex-col gap-6">
-        <article className="prose prose-lg md:prose-lg lg:prose-lg mx-auto min-w-full">
-          <div className="pb-8">
-            <p className="font-semibold text-lg">
-              <span className="text-red-600 pr-1">
-                {post.metadata.publishDate}
-              </span>{" "}
-              {post.metadata.category}
-            </p>
-          </div>
-          <div className="pb-10">
-            <h1 className="text-5xl sm:text-6xl font-black capitalize leading-12">
-              {post.metadata.title}
-            </h1>
-          </div>
-          <MDXContent />
-        </article>
+    <main className="flex flex-col items-center justify-between px-6 py-12 sm:px-10 sm:py-24 min-h-[calc(100vh-12rem)]">
+      <div className="max-w-3xl z-10 w-full items-center justify-between">
+        <div className="w-full flex justify-center items-center flex-col gap-6">
+          <Image
+            width={600}
+            height={245}
+            src={
+              post.metadata.thumbnail ||
+              "https://generated.vusercontent.net/placeholder.svg"
+            }
+            alt={post.metadata.title}
+            className="rounded-lg object-cover w-[770px] h-[310px]"
+          />
+          <article className="prose prose-lg md:prose-lg lg:prose-lg mx-auto min-w-full">
+            <div className="pb-8">
+              <p className="font-semibold text-lg">
+                <span className="text-red-600 pr-1">{formattedDate}</span>{" "}
+              </p>
+            </div>
+            <div className="pb-10">
+              <h1 className="text-5xl sm:text-6xl font-black capitalize leading-12">
+                {post.metadata.title}
+              </h1>
+            </div>
+            <MDXContent />
+          </article>
+        </div>
       </div>
-    </div>
+    </main>
   );
 }

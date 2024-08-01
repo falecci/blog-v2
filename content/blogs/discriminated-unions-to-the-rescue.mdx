@@ -1,0 +1,219 @@
+export const metadata = {
+  title: "TypeScript Discriminated Unions to the Rescue!",
+  publishDate: "2024-07-30",
+  description: "Meet one of the most powerful TypeScript features.",
+  thumbnail:
+    "https://ik.imagekit.io/visionsocial/blog/discriminated-unions-to-the-rescue.png?updatedAt=1722524307316",
+};
+
+Today we are going to explore discriminated unions and how they can enhance our developer experience in TypeScript 🔥.
+
+---
+
+Imagine we're building a system for tracking various types of events related to companies. We have events for when a company _signs up_, _onboards_, or _terminations_.
+
+Here's a basic representation of these events:
+
+```typescript
+type CompanyEvent = {
+  id: string;
+  createdAt: Date;
+  type: "signed-up" | "onboarded" | "terminated";
+};
+```
+
+We may want to store specific data for each event type: a `bonusCode` for sign-ups, a `customerEmail` for onboarded companies, and a `terminationDate` for terminations.
+
+Initially, we might define the type like this:
+
+```typescript
+type CompanyEvent = {
+  id: string;
+  createdAt: Date;
+  type: "signed-up" | "onboarded" | "terminated";
+  payload: Record<string, any>;
+};
+```
+
+However, this approach is problematic because it allows any property in `payload`:
+
+```typescript
+const signedUpEvent: CompanyEvent = {
+  id: '1';
+  createdAt: new Date();
+  type: 'signed-up'
+  payload: {
+    bonusCode: 'JUL24',
+    userIp: '127.0.0.1' // 🧐 This is not right. We don't need to store userIp here.
+  }
+}
+```
+
+A more refined approach would be to define `payload` with all possible properties:
+
+```typescript
+type CompanyEvent = {
+  id: string;
+  createdAt: Date;
+  type: "signed-up" | "onboarded" | "terminated";
+  payload: {
+    bonusCode?: string;
+    terminationDate?: Date;
+    customerEmail?: string;
+  };
+};
+```
+
+We won't be able to pass something that's not explicitly declared like `userIp` above. While this restricts the properties, it still allows for issues:
+
+```typescript
+const signedUpEvent: CompanyEvent = {
+  id: '1';
+  createdAt: new Date();
+  type: 'signed-up'
+  payload: {
+    bonusCode: 'JUL24',
+    terminationDate: new Date() // 😠 This is incorrect. 'terminationDate' shouldn't be here.
+  }
+}
+```
+
+Typing `payload` with all the possible props we can have for each event will lead us to the possibility of having an event with a value for all those props!
+
+## Welcome to Discriminated Unions
+
+To address this, we use discriminated unions 💡:
+
+```typescript
+type OnboardedEvent = {
+  type: "onboarded";
+  payload: {
+    customerEmail: string;
+  };
+};
+
+type TerminatedEvent = {
+  type: "terminated";
+  payload: {
+    terminationDate: Date;
+  };
+};
+
+type SignedUpEvent = {
+  type: "signed-up";
+  payload: {
+    bonusCode: string;
+  };
+};
+
+type CompanyEvent = {
+  id: string;
+  createdAt: Date;
+} & (OnboardedEvent | TerminatedEvent | SignedUpEvent);
+```
+
+What's going on there 🤯?. Well, we are declaring our `CompanyEvent` with the props that all events have in common. Those are `id` and `createdAt`.
+
+Then, we create an event for `Signing Up`, `Onboarding` and `Termination`. The beauty of this is that each event type has its own `payload` structure, ensuring correctness.
+
+Let's see how this behaves in TypeScript 🤓.
+
+```typescript
+function createCompanyEvent(event: CompanyEvent) { ... }
+
+createCompanyEvent({
+  id: '1',
+  createdAt: new Date(),
+  type: 'onboarded',
+  // now payload will be typed as { customerEmail: string }
+  payload: {
+    customerEmail: 'i.am@falecci.dev',
+  },
+})
+```
+
+**Amazing 🚀!** And what happens when we tried to specify another prop in the payload?. Spoiler. TypeScript will catch it:
+
+```typescript
+function createCompanyEvent(event: CompanyEvent) { ... }
+
+createCompanyEvent({
+  id: '1',
+  createdAt: new Date(),
+  type: 'onboarded',
+  payload: {
+    customerEmail: 'i.am@falecci.dev'
+    bonusCode: 'JUL24', // ⛔ Error: 'bonusCode' does not exist in type '{ customerEmail: string; }'
+  },
+})
+```
+
+This is absolute ly beautiful. By typing these events in this way we are making TS be _context aware_ about the information each event actually needs 🔥.
+
+## What about reading discriminated unions?
+
+When trying to read from types with discriminated unions, you'll stumbled onto this particular issue ⚠️.
+
+```typescript
+function getCompanyEvent(id: string): CompanyEvent { ... }
+const myEvent = getCompanyEvent('1')
+myEvent.payload. // ❔❔❔ Hello? Intellisense?
+// ^?
+//  (property) payload: {
+//     customerEmail: string;
+//  } | {
+//     terminationDate: Date;
+//  } | {
+//     bonusCode: string;
+//  }
+```
+
+Why aren't we able to type `myEvent.payload.bonusCode`? Why is it throwing an error? 😵‍💫
+
+`bonusCode` clearly exist in that event 🤔. Let's check what's the error telling us.
+
+```typescript
+Property 'bonusCode' does not exist on type '{ customerEmail: string; } | { terminationDate: Date; } | { bonusCode: string; }'.
+  Property 'bonusCode' does not exist on type '{ customerEmail: string; }'.
+```
+
+TS is telling is that at _THIS_ point of our code, it can't actually tell if the event is an onboarding event, termination event or signed up event. So we need to do some narrowing down first ⬇️.
+
+```typescript
+function getCompanyEvent(id: string): CompanyEvent { ... }
+const myEvent = getCompanyEvent('1')
+
+if (myEvent.type === 'signed-up') {
+  const bonusCode = myEvent.type.bonusCode // ✅ now it works
+}
+```
+
+By asserting the type of `myEvent` is actually `signed-up`, we are _narrowing down_ the type of `myEvent` to `CompanyEvent & SignedUpEvent` and TS will be smart enough to realize that's a `SignedUp` event 😎.
+
+The same thing works with `switch` statements.
+
+```typescript
+function processEventFromWebhook(event: CompanyEvent) {
+  switch (event.type) {
+    case "signed-up": {
+      console.log(event.payload.bonusCode);
+      break;
+    }
+    case "terminated": {
+      console.log(event.payload.terminationDate);
+      break;
+    }
+    case "onboarded": {
+      console.log(event.payload.customerEmail);
+      break;
+    }
+    default: {
+      throw new Error(`Unsupported event type`);
+    }
+  }
+}
+```
+
+Discriminated unions are a powerful pattern that enhances type safety and improves developer experience by adding business context to your types.
+
+Feel free to explore this [TypeScript Playground](https://www.typescriptlang.org/play/?#code/C4TwDgpgBA8gdgIwPYEMBOATCGCiA3COYKAXigG8AoKKUSALigHIlFVNsnqowUQAbVBkZUaNAMYBXAM7AkAWwhoc8lAEt+jWWjVwA5twC+lY5TrQAKkvm6UwbPkLEy5KN3OMm9tDbh3O3LwCQiLcNN6+dmqsACL+jHH2RiaUZuDQAMpqenDYAKpgjkSkFG7h6Z7S2bkYALSSYFw0QYIowhRhUMhwMgDCSFhawDr6yabmUP3yvHAgRc4dNGrt2rp6ANzc4mgQ-hgAgsAJ-puGUABkUAAU3AA+sGzoWLgERHdQVj629i9O71k5fKFV7ASgASlSADNJHBxMBonAoNtdvYpjM5iCrhAQYw0ShZvMwaVjNDYfDWFA9BBgHiCZjlkMRnowbiFOj5qVuDtgJI0IjyGcUNJJmz8Ri-lBTFBSXCETw0EhxBBpNJ5gAxBXyADqEAQAAskEgANZYnEi6ZiwmLKDSADuamA4j1pqcADpzETRGJxELoEwqoC6g0mKExN7WNIkPwIK7BHoXURXS0hK7un0BhAIWGaAgdigjZsw8Ywz7pH6It9OKHs+II1GY3GE8Ak3xWhh3dZvgjEpnOjm8wXOsXvb7mKxkE8q9aS3Xo7GkPHsW7k21XVJZAolCp1Pws9nc7tB0XOlhIShJPwjtOxMA9QrbVBcg+cGgFWgrgADPJwaQNMBINAfigJdinMD89xoYdi2MIA) to experiment with the examples ❤️.
