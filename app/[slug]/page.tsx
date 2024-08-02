@@ -76,6 +76,7 @@ export default async function Page({ params }: { params: { slug: string } }) {
             width={600}
             height={245}
             src={
+              post.metadata.portrait ||
               post.metadata.thumbnail ||
               "https://generated.vusercontent.net/placeholder.svg"
             }
