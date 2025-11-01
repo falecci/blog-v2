@@ -1,16 +1,12 @@
 import React from "react";
 import type { MDXComponents } from "mdx/types";
-import YouTube from "@/components/mdx/youtube";
 import Code from "@/components/mdx/code";
 import InlineCode from "@/components/mdx/inline-code";
-import Pre from "@/components/mdx/pre"; // Adjust the import path as needed
 import { Button } from "@/components/ui/button";
 
 export function useMDXComponents(components: MDXComponents): MDXComponents {
   return {
     ...components,
-    YouTube,
-    pre: Pre, // Use the custom Pre component
     code: (props) => {
       const { className, children } = props;
       if (className) {

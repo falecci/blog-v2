@@ -16,12 +16,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: `falecci.dev | ${post.metadata.title}`,
     description: post.metadata.description,
     twitter: {
-      card: "summary_large_image",
-      images: [
-        post.metadata.thumbnail.includes("twitter")
-          ? post.metadata.thumbnail
-          : `${post.metadata.thumbnail}&tr=w-400,h-200`,
-      ],
       title: post.metadata.title,
       description: post.metadata.description,
     },
@@ -69,34 +63,21 @@ export default async function Page({ params }: { params: { slug: string } }) {
   );
 
   return (
-    <main className="flex flex-col items-center justify-between px-6 py-12 sm:px-10 sm:py-24 min-h-[calc(100vh-12rem)]">
-      <div className="max-w-3xl z-10 w-full items-center justify-between">
-        <div className="w-full flex justify-center items-center flex-col gap-6">
-          <Image
-            width={600}
-            height={245}
-            src={
-              post.metadata.portrait ||
-              post.metadata.thumbnail ||
-              "https://generated.vusercontent.net/placeholder.svg"
-            }
-            alt={post.metadata.title}
-            className="rounded-lg object-cover w-[770px] h-[310px]"
-          />
-          <article className="prose prose-lg md:prose-lg lg:prose-lg mx-auto min-w-full">
-            <div className="pb-8">
-              <p className="font-semibold text-lg">
-                <span className="text-red-600 pr-1">{formattedDate}</span>{" "}
-              </p>
-            </div>
-            <div className="pb-10">
-              <h1 className="text-5xl sm:text-6xl font-black capitalize leading-12">
-                {post.metadata.title}
-              </h1>
-            </div>
-            <MDXContent />
-          </article>
-        </div>
+    <main className="flex flex-col items-center px-6 py-12 sm:px-10 sm:py-24">
+      <div className="max-w-3xl w-full">
+        <article className="prose prose-lg md:prose-lg lg:prose-lg">
+          <div className="pb-8">
+            <p className="font-semibold text-lg">
+              <span className="text-red-600 pr-1">{formattedDate}</span>{" "}
+            </p>
+          </div>
+          <div className="pb-10">
+            <h1 className="text-5xl sm:text-6xl font-black leading-12">
+              {post.metadata.title}
+            </h1>
+          </div>
+          <MDXContent />
+        </article>
       </div>
     </main>
   );

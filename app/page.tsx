@@ -1,7 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
 import Link from "next/link";
-import Image from "next/image";
 import type { Metadata } from "next";
 import React from "react";
 import { format } from "date-fns";
@@ -20,6 +19,7 @@ type Post = {
 interface PostMetadata {
   title: string;
   publishDate: string;
+  description?: string;
   [key: string]: any;
 }
 
@@ -37,7 +37,6 @@ async function getAllPosts(): Promise<Post[]> {
         return {
           slug: filename.replace(".mdx", ""),
           metadata: metadata || {
-            thumbnail: "",
             title: "Untitled",
             publishDate: "1970-01-01",
             description: "Work in progress",
@@ -66,37 +65,46 @@ export default async function Home() {
   const posts = await getAllPosts();
 
   return (
-    <main className="flex-1 py-12 px-4 md:px-6">
-      <div className="container mx-auto max-w-4xl">
-        <div className="grid gap-8 md:grid-cols-2">
+    <main className="py-16 px-4 md:px-6">
+      <div className="container mx-auto max-w-3xl">
+        <div className="text-center mb-16">
+          <h1 className="text-5xl font-bold text-black mb-4">falecci.dev</h1>
+          <p className="text-gray-600 text-lg mb-6">
+            My name is Fede. This is my personal blog.
+          </p>
+          <div className="space-y-2 text-black">
+            <p>
+              <a href="https://github.com/falecci" className="underline">
+                Github
+              </a>
+              {" · "}
+              <a href="mailto:i.am@falecci.dev" className="underline">
+                Email
+              </a>
+            </p>
+          </div>
+        </div>
+
+        <h2 className="text-2xl font-bold text-black mb-8 mt-16">Blog Posts</h2>
+
+        <div className="space-y-6">
           {posts.map((post) => (
-            <article key={post.slug} className="grid gap-4 max-w-[370px]">
-              <Image
-                width={370}
-                height={245}
-                src={
-                  post.metadata.thumbnail ||
-                  "https://generated.vusercontent.net/placeholder.svg"
-                }
-                alt={post.metadata.title}
-                className="rounded-lg object-cover w-[370px] h-[245px]"
-              />
-              <a href={post.slug}>
-                <h2 className="text-xl font-bold">{post.metadata.title}</h2>
-                <p className="text-muted-foreground">
-                  Posted on{" "}
+            <article
+              key={post.slug}
+              className="border border-gray-200 rounded-lg p-6 hover:shadow-sm transition-shadow"
+            >
+              <Link href={`/${post.slug}`} className="block">
+                <h3 className="text-xl font-bold text-black mb-2">
+                  {post.metadata.title}
+                </h3>
+                <p className="text-gray-500 text-sm mb-3">
                   {format(new Date(post.metadata.publishDate), "MMMM dd, yyyy")}
                 </p>
-              </a>
-              <p className="text-muted-foreground">
-                {post.metadata.description}
-              </p>
-              <Link
-                href={post.slug}
-                className="text-primary hover:underline"
-                prefetch={false}
-              >
-                Read More
+                {post.metadata.description && (
+                  <p className="text-black leading-relaxed">
+                    {post.metadata.description}
+                  </p>
+                )}
               </Link>
             </article>
           ))}
