@@ -46,6 +46,18 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
         {...props}
       />
     ),
-    a: (props) => <a className="hover:underline font-semibold" {...props} />,
+    a: (props) => (
+      <a
+        className="hover:underline font-semibold focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 rounded"
+        {...props}
+      />
+    ),
+    img: (props) => (
+      <img
+        alt={props.alt || ""}
+        className="max-w-full h-auto rounded-lg my-6"
+        {...props}
+      />
+    ),
   };
 }

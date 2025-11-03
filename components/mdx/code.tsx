@@ -28,8 +28,11 @@ const Code = (props: any) => {
         <span className="text-gray-300">{language}</span>
         <button
           type="button"
-          className="text-gray-300 hover:text-white"
+          className="text-gray-300 hover:text-white focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:ring-offset-gray-900 rounded"
           onClick={handleCopy}
+          aria-label={
+            copied ? "Code copied to clipboard" : "Copy code to clipboard"
+          }
         >
           {copied ? "Copied!" : "Copy"}
         </button>

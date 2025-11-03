@@ -23,6 +23,11 @@ interface PostMetadata {
   [key: string]: any;
 }
 
+function stripPrefix(filename: string): string {
+  // Remove the numbered prefix (e.g., "001-") from the filename
+  return filename.replace(/^\d+-/, "");
+}
+
 async function getAllPosts(): Promise<Post[]> {
   const dir = path.join(process.cwd(), "content", "blogs");
   const files = fs.readdirSync(dir);
@@ -35,7 +40,7 @@ async function getAllPosts(): Promise<Post[]> {
       try {
         const { metadata } = require(`@/content/blogs/${filename}`);
         return {
-          slug: filename.replace(".mdx", ""),
+          slug: stripPrefix(filename.replace(".mdx", "")),
           metadata: metadata || {
             title: "Untitled",
             publishDate: "1970-01-01",
@@ -49,7 +54,8 @@ async function getAllPosts(): Promise<Post[]> {
           metadata: { title: "Untitled", publishDate: "1970-01-01" },
         };
       }
-    });
+    })
+    .filter((post) => !post.metadata.draft); // Filter out draft posts
 
   // Sort posts by publishDate in descending order
   posts.sort(
@@ -65,7 +71,7 @@ export default async function Home() {
   const posts = await getAllPosts();
 
   return (
-    <main className="py-16 px-4 md:px-6">
+    <main id="main-content" className="py-16 px-4 md:px-6">
       <div className="container mx-auto max-w-3xl">
         <div className="text-center mb-16">
           <h1 className="text-5xl font-bold text-black mb-4">falecci.dev</h1>
@@ -74,11 +80,17 @@ export default async function Home() {
           </p>
           <div className="space-y-2 text-black">
             <p>
-              <a href="https://github.com/falecci" className="underline">
+              <a
+                href="https://github.com/falecci"
+                className="underline focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 rounded"
+              >
                 Github
               </a>
               {" · "}
-              <a href="mailto:i.am@falecci.dev" className="underline">
+              <a
+                href="mailto:i.am@falecci.dev"
+                className="underline focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 rounded"
+              >
                 Email
               </a>
             </p>
@@ -93,13 +105,19 @@ export default async function Home() {
               key={post.slug}
               className="border border-gray-200 rounded-lg p-6 hover:shadow-sm transition-shadow"
             >
-              <Link href={`/${post.slug}`} className="block">
+              <Link
+                href={`/${post.slug}`}
+                className="block focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 rounded-lg"
+              >
                 <h3 className="text-xl font-bold text-black mb-2">
                   {post.metadata.title}
                 </h3>
-                <p className="text-gray-500 text-sm mb-3">
+                <time
+                  dateTime={post.metadata.publishDate}
+                  className="text-gray-500 text-sm mb-3 block"
+                >
                   {format(new Date(post.metadata.publishDate), "MMMM dd, yyyy")}
-                </p>
+                </time>
                 {post.metadata.description && (
                   <p className="text-black leading-relaxed">
                     {post.metadata.description}

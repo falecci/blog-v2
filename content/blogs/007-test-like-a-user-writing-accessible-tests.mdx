@@ -1,0 +1,138 @@
+export const metadata = {
+  title: "Test Like a User: Writing Accessible, User-Centered Tests",
+  publishDate: "2025-01-28",
+  description:
+    "Learn how to write integration tests that mirror how users actually interact with your app, using accessibility-first query patterns.",
+    draft: true
+};
+
+In the [previous post](/why-integration-tests-beat-unit-tests), we explored why integration tests deliver better value than unit tests. Now let's dive into the practical side: how to write tests that mirror how users actually interact with your app.
+
+---
+
+## User-Centered Tests
+
+We test from the **user's perspective**.
+
+Tests should describe **user actions** (`submits a form`, `displays employee list`) rather than implementation details (`renders FormComponent`). ([reference](https://testing-library.com/docs/guiding-principles))
+
+That's why we prefer [accessible queries](https://testing-library.com/docs/queries/about/#priority). For example:
+
+```tsx
+// ❌ brittle test with testids and selectors
+await UserEvent.click(screen.getByTestId("save-btn"));
+await UserEvent.selectOptions(screen.getByTestId("dept-combobox-1"), "sales");
+
+// ✅ better test with roles
+await UserEvent.click(screen.getByRole("button", { name: /save/i }));
+await UserEvent.selectOptions(screen.getByRole("combobox", { name: /department/i }), "sales");
+```
+
+Accessible queries align with what users actually see (buttons, comboboxes, labels). They also make tests easier to read and maintain.
+
+Compare this:
+
+```tsx
+screen.getByText("Treasury balance").closest('[class*="bg-[url"]')
+```
+
+Versus this:
+
+```tsx
+screen.getByRole("button", { name: /treasury balance/i })
+```
+
+The second one is clearer, more robust, and maps directly to the user's mental model.
+
+---
+
+## Queries and Accessibility
+
+As mentioned earlier, we prefer **role-based queries** (`getByRole`) because they align with accessibility best practices and produce clearer, more maintainable tests ([reference](https://testing-library.com/docs/queries/about#priority))
+
+Sometimes you'll encounter multiple elements with the same **role and name**, such as an array of fields in a form. For example, in the Company Onboarding workflow, you might add multiple owners, each with a first name, last name, and address. It can be tempting to select elements by index—but there's a cleaner solution: the `within` utility from Testing Library.
+
+```tsx
+const owner1Section = screen.getByRole('section', { name: 'Owner 1' })
+const inOwner1Section = within(owner1Section)
+
+const owner1Name = inOwner1Section.getByRole('textbox', { name: 'First Name' })
+```
+
+You can also make heavy use of **`aria-label` and `role`** for elements like icon buttons:
+
+```tsx
+<Button
+  variant="secondary"
+  className="w-6 h-6 flex items-center justify-center"
+  aria-label="Open autopilot settings"
+>
+  <Stars02Icon className="!w-3 !h-3 !text-[--on-surface-stroke-secondary]" />
+</Button>
+```
+
+Here, the button can be queried by the `aria-label` (`Open autopilot settings`) even though the label isn't visible on the UI. This pattern works well for cards, modals, and other interactive elements.
+
+Ultimately, we should strive to keep elements as **semantic as possible**:
+
+```tsx
+// ❌ Non-semantic
+<div onClick={handleSubmit} className="btn">Submit</div>
+
+// ✅ Semantic
+<button onClick={handleSubmit}>Submit</button>
+
+// ❌ Misusing button
+<button onClick={() => navigate("/about")}>About</button>
+
+// ✅ Semantic link
+<a href="/about">About</a>
+<Link to="/about">About</Link>  // Next Link
+
+// ❌ Overusing div
+<div className="header">
+  <div>Logo</div>
+  <div>Menu</div>
+</div>
+
+// ✅ Better: semantic wrapper
+<header>
+  <div>Logo</div>
+  <nav>Menu</nav>
+</header>
+
+const todos = ["Buy groceries", "Walk the dog", "Read a book"];
+
+// ❌ Using divs
+<div className="todo-list">
+  {todos.map((todo, i) => (
+    <div key={i}>{todo}</div>
+  ))}
+</div>
+
+// ✅ Using ul/li
+<ul className="todo-list">
+  {todos.map((todo, i) => (
+    <li key={i}>{todo}</li>
+  ))}
+</ul>
+```
+
+👉 **In short:**
+- Prefer **role-based queries** (`getByRole`) for accessibility alignment.
+- Use `within` when multiple elements share the same labels or text.
+- Keep your HTML as **semantic as possible**—it helps both users and tests.
+
+---
+
+## Wrapping Up
+
+Writing tests from the user's perspective not only makes them more maintainable—it also improves your app's accessibility. When you write tests that use accessible queries, you're forced to think about how users actually interact with your app, which leads to better UX overall.
+
+In the next post, we'll explore async patterns and how to handle waiting for elements to appear (or disappear) in your tests.
+
+If you're interested in diving deeper, check out:
+- [Testing Library's guiding principles](https://testing-library.com/docs/guiding-principles)
+- [Testing Library queries priority](https://testing-library.com/docs/queries/about/#priority)
+
+
