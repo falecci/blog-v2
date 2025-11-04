@@ -2,6 +2,7 @@ import React from "react";
 import type { MDXComponents } from "mdx/types";
 import Code from "@/components/mdx/code";
 import InlineCode from "@/components/mdx/inline-code";
+import StackBlitz from "@/components/mdx/stackblitz";
 import { Button } from "@/components/ui/button";
 
 export function useMDXComponents(components: MDXComponents): MDXComponents {
@@ -59,5 +60,6 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
         {...props}
       />
     ),
+    StackBlitz,
   };
 }
