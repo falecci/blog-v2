@@ -1,0 +1,298 @@
+export const metadata = {
+  title: "Stepping up your testing game",
+  publishDate: "2025-01-27",
+  description:
+    "A practical guide to writing better integration tests with React Testing Library, MSW, and Vitest for your webapp."
+};
+
+## Introduction
+
+This is the beginning of a series of posts about integration testing for web applications with Vitest, React Testing Library, and MSW. **Although there will be technical stuff, we will go through some important decisions and concepts that apply to any kind of testing and libraries you use.**
+
+---
+ 
+If you've ever found yourself drowning in unit tests that mock everything, or spending hours debugging **why your tests pass but your app fails in production**, this series of posts are for you.
+
+We're going to dive into a testing philosophy that focuses on **integration tests** over unit tests, **user-centered testing** over implementation details, and **MSW** over mocking hooks. This approach has transformed how I write tests and I think it can help you too.
+
+---
+
+## The Philosophy: Fewer Tests, Mostly Integration
+
+As you might already know, there are many types of tests: **unit tests**, **integration tests**, **end-to-end (E2E) tests**, and there are even models like the [*testing pyramid*](https://martinfowler.com/articles/practical-test-pyramid.html).
+
+Personally I like following the principle of *["Write tests. Not too many. Mostly integration"](https://kentcdodds.com/blog/write-tests)*, originally coined by Guillermo Rauch (Vercel) and expanded by Kent C. Dodds. The idea is simple: tests should deliver the **most value** for the **least cost**.
+
+When we talk about the **cost** of a test, there are basically two types of costs:
+- **Developer cost** (time required to write and maintain them)
+- **CI cost** (minutes spent running tests)
+
+Let's get into the developer cost first.
+
+Imagine a classic form with inputs, selects, and a date picker. 
+
+We could have unit tests for each input making sure `onChange` prop has been called with the right value and else. But at the end of the day, the integration of all the parts is not actually tested and it might fail.
+
+What if we are doing some data transformation of our form values before sending it to our API? Sure, our `<DatePicker />` component is calling `onChange` with the right date value, but we may have a bug when posting this data:
+
+```tsx
+async function onSubmit(values: FormValues) {
+    const timezonelessDate = new Date().toISOString().split('T')[2] // it should be actually 0 index -> this is undefined
+    if (isValidBusinessDate(timezonelessDate)) // -> ❌ this will throw an error
+    
+    // ...
+}
+```
+
+Our unit tests here would give us a **false sense of security** because they would still pass but our form submission is not actually working. There is nothing worse than a _lying test_.
+
+If you are doing this work at a company, management/product people will come biting at you asking _why the user profile form failed if you spent time writing tests?_ and it's a valid complaint. Convincing product/management to spend time on technical stuff is _super hard_ so you don't want to lose the game there.
+
+On the other hand, we could setup **E2E tests with Playwright or Cypress**. In this type of tests, we **get a full browser** so we are fully integrated. That is awesome!
+
+But now we need to start doing some chores like spinning up the browser, setting up an environment, logging the user in our app, cleaning the environment afterwards and else. (Note: you can mock your requests and that would avoid having to deal with a DB but then that's not truly **E2E**).
+
+These chores _take time_. Imagine if you want to test a form that has multiple branches! Now you are getting full confidence in your tests but devs are truly unhappy because they need to **run a +25 minutes CI to merge** their already approved work.
+
+If you can relate with what I just explained, welcome the world of **integration tests**. This type of tests will let us cover **A LOT** of ground. Things like a page with a table that's feed data from an API, clicking on a row to open a sheet that edits the record and then asserting the record has been updated in the table.
+
+From my point of view, focusing on integration tests gives us the **best return on investment**. Let's dive into an example.
+
+### Example: Testing a wait list page
+
+Let's say we are testing a wait list page. Here is a Stackblitz sample.
+
+<StackBlitz id="sb1-e79tzwoi" />
+
+As we mentioned before, it would be _tempting_ to test individual components but that is not good enough. So let's try to test the page as a whole. We have a lot of scenarios to think about. Think about
+
+- All form inputs present/visible
+- Validation errors
+ - Email field is required
+ - Email field is invalid
+- Success after submission
+- Loading states
+- Error states
+
+Given that chain of thought, it would be _super tempting_ to write the following tests:
+
+```tsx
+test("renders form fields correctly", () => { ... })
+test("shows validation errors on empty submission", async () => { ... })
+test("shows validation errors on invalid email", async () => { ... })
+test("submits form with valid email", async () => { ... })
+```
+
+That looks good but the truth is that these three tests overlap heavily. They can actually be combined into a **single, stronger test**:
+
+```tsx
+test("joins wait list", async () => {
+  render(<WaitListPage />);
+
+  // Trigger validation errors
+  const joinButton = screen.getByRole("button", { name: /join/i });
+  await UserEvent.click(joinButton);
+
+  // Fill email
+  const emailInput = screen.getByRole("textbox", { name: /email/i });
+  await UserEvent.type(emailInput, "janka");
+
+  // Trigger validation error on invalid email
+  await UserEvent.click(joinButton);
+
+  const ERROR_EMAIL_INVALID = 'Please enter a valid email address'
+
+  // Assert validation error is visible
+  expect(await screen.findByText(ERROR_EMAIL_INVALID)).toBeInTheDocument();
+
+  // Type a valid email now
+  await UserEvent.clear(emailInput)
+  await UserEvent.type(emailInput, "janka@falecci.dev");
+
+  // Assert error is gone
+  expect(await screen.queryByText(ERROR_EMAIL_INVALID)).not.toBeInTheDocument();
+
+  // Submit successfully
+  await UserEvent.click(joinButton);
+  await expect.poll(() => screen.getByText("Thank you for joining our community. We'll be in touch soon!")).toBeVisible();
+});
+```
+
+This test above checks for:
+- Form elements present
+- Validation errors show up
+- Errors go away once fixed
+- Form submission succeeds
+
+As you can see, we are covering way more ground in a single test. And remember, fewer tests means **lower maintenance overhead** for you and your teammates.
+
+## What about mocking?
+
+You may have noticed that we aren't doing any _mocking_ in the test above. That's good because the code doesn't do any network request. But what if it does? The example below now has a POST network request to `https://falecci-blog-api.vercel.app/api/waitlist/join`
+
+<StackBlitz id="sb1-44s9vzms" />
+
+Well, we can always mock the `fetch` or `axios` module using **Jest** or **Vitest**, right?
+
+```tsx
+jest.mock('axios', () => ({
+  get: jest.fn(),
+  post: jest.fn(),
+  put: jest.fn(),
+  delete: jest.fn(),
+}));
+```
+
+Well, _that's not a good idea_. If you have done this in the past, you know how troublesome it is to maintain. So let me show you a way better alternative.
+
+## Say hello to MSW
+
+[MSW](https://mswjs.io/) (**Mock Service Worker**) lets us intercept real network requests and provide handlers for `http` and `graphql` requests. It also supports **websockets**! Instead of mocking the module in charge of doing the network request, it intercepts the request and it let us provide a response to it. This way, we will be testing **how our app actually works** — without mocking hooks or internal logic.
+
+So let's revisit our example now that we have added an actual API request to it!
+
+```tsx
+test("joins wait list", async () => {
+  // Initialize server
+  const server = setupServer()
+
+  // Start server
+  server.listen()
+
+  // Register the join wait list request
+  server.use(
+    http.post('https://falecci-blog-api.vercel.app/api/waitlist/join', async () => {
+      return HttpResponse.json({
+        success: true,
+      })
+    })
+  )
+
+  render(<WaitListPage />);
+
+  // Trigger validation errors
+  const joinButton = screen.getByRole("button", { name: /join/i });
+  await UserEvent.click(joinButton);
+
+  // Fill email
+  const emailInput = screen.getByRole("textbox", { name: /email/i });
+  await UserEvent.type(emailInput, "janka");
+
+  // Trigger validation error on invalid email
+  await UserEvent.click(joinButton);
+
+  const ERROR_EMAIL_INVALID = 'Please enter a valid email address'
+
+  // Assert validation error is visible
+  expect(await screen.findByText(ERROR_EMAIL_INVALID)).toBeInTheDocument();
+
+  // Type a valid email now
+  await UserEvent.clear(emailInput)
+  await UserEvent.type(emailInput, "janka@falecci.dev");
+
+  // Assert error is gone
+  expect(await screen.queryByText(ERROR_EMAIL_INVALID)).not.toBeInTheDocument();
+
+  // Submit successfully
+  await UserEvent.click(joinButton);
+  await expect.poll(() => screen.getByText("Thank you for joining our community. We'll be in touch soon!")).toBeVisible();
+
+  // Stop server
+  server.close()
+});
+```
+
+Wow. Is actually **THAT** simple and straightforward? Yes! It is! One thing you can ask though is _do I need to do the server setup, start it and close it for every test I write?_ The answer is no. You can setup the server once and then reuse it for all your tests by using the lifecycle hooks from **Jest/Vitest** (`beforeAll`, `afterAll`, `beforeEach`, `afterEach`), or you can use [`test context`](https://vitest.dev/guide/test-context.html#test-context) to do it for you.
+
+Do you want to test your **loading state** and your **error state**? Super easy as well. You can update your handler.
+
+```tsx
+import { delay } from 'msw'
+
+test("joins wait list with loading state", async () => {
+  // Previous code...
+
+  server.use(
+    http.post('/api/waitlist', async () => {
+      await delay(1000)
+
+      return HttpResponse.json({
+        message: "Thank you for joining our community. We'll be in touch soon!",
+      })
+    })
+  )
+
+  // Follow up code...
+})
+```
+
+To make a click in your head, this test is not even necessary and we can add the delay to the original test! So **BOOM**, we are testing the **loading state** and the **success state** in a single test. _That's amazing_.
+
+For the error state, we will have a different test. But on that test, we won't do any form validation since we already covered that in the original test.
+
+```tsx
+test("displays error if joining wait list failed", async () => {
+ // Initialize server
+  const server = setupServer()
+
+  // Start server
+  server.listen()
+
+  // Register the join wait list request
+  server.use(
+    http.post('/api/waitlist', async () => {
+      return HttpResponse.json(null, { status: 400, statusText: 'Server is down. Too much traffic now!' })
+    })
+  )
+
+  render(<WaitListPage />);
+
+  // Type email
+  const emailInput = screen.getByRole("textbox", { name: /email/i });
+  await UserEvent.type(emailInput, "janka@falecci.dev");
+
+  // Click join button
+  const joinButton = screen.getByRole("button", { name: /join/i });
+  await UserEvent.click(joinButton);
+
+  // Assert error is visible
+  await expect.poll(() => screen.findByText("Server is down. Too much traffic now!")).toBeVisible();
+
+  // Stop server
+  server.close()
+})
+```
+
+That's it! We are testing the error state in a single test. _Again_, we are covering more ground with fewer tests.
+
+Okay, okay, I'm convincing you by now. Integration tests are great, sure. But I don't have the confidence that an **E2E test** would give me. What if the wrong data reaches the API? We aren't testing that here!
+
+Well, it would be super simple to do so in our handler.
+
+```tsx
+  server.use(
+    http.post('/api/waitlist', async ({ request }) => {
+      const body = await request.json()
+
+      if (body.email !== "alice123@falecci.dev") {
+        return HttpResponse.json(null, { status: 400, statusText: `Expected email was: alice123@falecci.dev and instead got: ${body.email}` })
+      }
+
+      await delay(1000)
+
+      return HttpResponse.json({
+        message: "Thank you for joining our community. We'll be in touch soon!",
+      })
+    })
+  )
+```
+
+This is a [recommended pattern in **MSW**](https://mswjs.io/docs/best-practices/avoid-request-assertions/) and you can even go further with using the same `validation library` you use in your app. This is not a way of saying you should reimplement **ALL** your API logic in your tests. But at least you can have some confidence that you are sending the right data to the API.
+
+## Wrapping Up
+
+If I had any luck, I was able to convince you why **integration tests** are super powerful in your testing suite. They run **really fast** and you can cover **a lot of ground and scenarios**.
+
+By the way, did you notice how our test names weren't something like: _should render form fields correctly_? Well, that's because we want our tests to be _user-centric_ and forget about implementation details. I'll tell you more about this in the next post.
+
+Until then, happy testing and feel free to reach out to me!

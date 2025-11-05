@@ -32,7 +32,7 @@ const StackBlitz: React.FC<StackBlitzProps> = ({
           }
         }
       `}</style>
-      <div className="w-full rounded-lg overflow-hidden">
+      <div className="w-full rounded-lg overflow-hidden mb-4">
         <iframe
           src={embedUrl}
           className="w-full border-0 stackblitz-embed"
