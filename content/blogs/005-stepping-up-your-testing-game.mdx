@@ -110,7 +110,7 @@ test("joins wait list", async () => {
   await UserEvent.type(emailInput, "janka@falecci.dev");
 
   // Assert error is gone
-  expect(await screen.queryByText(ERROR_EMAIL_INVALID)).not.toBeInTheDocument();
+  expect(screen.queryByText(ERROR_EMAIL_INVALID)).not.toBeInTheDocument();
 
   // Submit successfully
   await UserEvent.click(joinButton);
@@ -191,7 +191,7 @@ test("joins wait list", async () => {
   await UserEvent.type(emailInput, "janka@falecci.dev");
 
   // Assert error is gone
-  expect(await screen.queryByText(ERROR_EMAIL_INVALID)).not.toBeInTheDocument();
+  expect(screen.queryByText(ERROR_EMAIL_INVALID)).not.toBeInTheDocument();
 
   // Submit successfully
   await UserEvent.click(joinButton);
