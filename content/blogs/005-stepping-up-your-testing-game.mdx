@@ -17,7 +17,7 @@ We're going to dive into a testing philosophy that focuses on **integration test
 
 ---
 
-## The Philosophy: Fewer Tests, Mostly Integration
+## The philosophy: fewer tests, mostly integration
 
 As you might already know, there are many types of tests: **unit tests**, **integration tests**, **end-to-end (E2E) tests**, and there are even models like the [*testing pyramid*](https://martinfowler.com/articles/practical-test-pyramid.html).
 
@@ -58,7 +58,7 @@ If you can relate with what I just explained, welcome the world of **integration
 
 From my point of view, focusing on integration tests gives us the **best return on investment**. Let's dive into an example.
 
-### Example: Testing a wait list page
+### Example: testing a wait list page
 
 Let's say we are testing a wait list page. Here is a Stackblitz sample.
 
@@ -289,7 +289,7 @@ Well, it would be super simple to do so in our handler.
 
 This is a [recommended pattern in **MSW**](https://mswjs.io/docs/best-practices/avoid-request-assertions/) and you can even go further with using the same `validation library` you use in your app. This is not a way of saying you should reimplement **ALL** your API logic in your tests. But at least you can have some confidence that you are sending the right data to the API.
 
-## Wrapping Up
+## Wrapping up
 
 If I had any luck, I was able to convince you why **integration tests** are super powerful in your testing suite. They run **really fast** and you can cover **a lot of ground and scenarios**.
 
